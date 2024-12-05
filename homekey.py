@@ -566,6 +566,8 @@ def perform_authentication_flow(
     """Returns an Endpoint if one was found and successfully authenticated.
     Returns an Issuer if endpoint was authenticated via Attestation
     """
+    log.info(f"Starting authentication flow with reader_identifier={reader_identifier.hex()}")
+
     reader_public_key = reader_private_key.public_key()
     reader_public_key_x, reader_public_key_y = get_ec_key_public_points(
         reader_public_key
@@ -592,8 +594,10 @@ def perform_authentication_flow(
         key_size=key_size,
     )
 
-    if endpoint is not None and flow <= DigitalKeyFlow.FAST:
-        return DigitalKeyFlow.FAST, None, endpoint
+    if endpoint is not None:
+        log.info(f"FAST authentication successful for endpoint ID: {endpoint.id.hex()}")
+        if flow <= DigitalKeyFlow.FAST:
+            return DigitalKeyFlow.FAST, None, endpoint
 
     k_persistent, endpoint, secure = standard_auth(
         tag=tag,
@@ -610,8 +614,10 @@ def perform_authentication_flow(
         key_size=key_size,
     )
 
-    if endpoint is not None and k_persistent is not None:
-        endpoint.persistent_key = k_persistent
+    if endpoint is not None:
+        log.info(f"STANDARD authentication successful for endpoint ID: {endpoint.id.hex()}")
+        if k_persistent is not None:
+            endpoint.persistent_key = k_persistent
 
     if endpoint is not None and flow <= DigitalKeyFlow.STANDARD:
         return DigitalKeyFlow.STANDARD, None, endpoint
@@ -656,7 +662,7 @@ def perform_authentication_flow(
         log.info("Attestation signature is invalid ")
         return DigitalKeyFlow.ATTESTATION, None, None
 
-    log.info(f"Attestation signature is valid {endpoint}")
+    log.info(f"Attestation signature is valid for endpoint ID: {endpoint.id.hex() if endpoint else 'unknown'}")
 
     return (
         DigitalKeyFlow.ATTESTATION,
